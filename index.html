@@ -1,1 +1,2511 @@
-hh
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Worm Arena .io</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #101524;
+      --panel-bg: rgba(20, 27, 46, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.14);
+      --accent-green: #2ee573;
+      --accent-green-dark: #1db954;
+      --accent-gold: #ffd166;
+      --accent-pink: #ff5d8f;
+      --text-main: #ffffff;
+      --text-muted: #9fb0d1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: 'Fredoka', 'Nunito', sans-serif;
+      color: var(--text-main);
+    }
+
+    #gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    /* HUD Elements */
+    .hud-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1.5px solid var(--panel-border);
+      border-radius: 18px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Top Left Stats */
+    #statsPanel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      padding: 12px 18px;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .stat-box {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.1;
+      color: #fff;
+    }
+
+    .stat-value.gold { color: var(--accent-gold); }
+    .stat-value.pink { color: var(--accent-pink); }
+
+    /* Active Power-Up Pills HUD */
+    #powerupHud {
+      position: absolute;
+      top: 86px;
+      left: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pu-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 14px;
+      background: rgba(20, 27, 46, 0.9);
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+      animation: popIn 0.2s ease;
+    }
+
+    .pu-bar-bg {
+      width: 54px;
+      height: 6px;
+      border-radius: 99px;
+      background: rgba(255, 255, 255, 0.15);
+      overflow: hidden;
+    }
+
+    .pu-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.1s linear;
+    }
+
+    /* Top Right Leaderboard */
+    #leaderboardPanel {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 220px;
+      padding: 12px 14px;
+    }
+
+    .lb-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-gold);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .lb-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .lb-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      color: #dce6fa;
+    }
+
+    .lb-item.me {
+      background: linear-gradient(90deg, rgba(46, 229, 115, 0.28), rgba(46, 229, 115, 0.08));
+      border: 1px solid rgba(46, 229, 115, 0.5);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .lb-rank {
+      width: 20px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .lb-item.me .lb-rank { color: var(--accent-green); }
+
+    .lb-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 8px;
+    }
+
+    .lb-score {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Bottom Right Radar */
+    #radarContainer {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 144px;
+      height: 144px;
+      border-radius: 50%;
+      padding: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #radarCanvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      display: block;
+    }
+
+    /* Sound Toggle Button */
+    #soundToggleBtn {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      pointer-events: auto;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 1.5px solid var(--panel-border);
+      background: var(--panel-bg);
+      color: #fff;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    #soundToggleBtn:hover {
+      transform: scale(1.08);
+      background: rgba(34, 45, 74, 0.95);
+    }
+
+    /* Mobile Boost Button */
+    #mobileBoostBtn {
+      position: absolute;
+      bottom: 26px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: auto;
+      display: none;
+      padding: 14px 28px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: linear-gradient(180deg, #ffbe0b 0%, #fb5607 100%);
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      box-shadow: 0 6px 0 #b83700, 0 12px 24px rgba(251, 86, 7, 0.45);
+      cursor: pointer;
+    }
+
+    #mobileBoostBtn:active, #mobileBoostBtn.active {
+      transform: translateX(-50%) translateY(4px);
+      box-shadow: 0 2px 0 #b83700, 0 6px 14px rgba(251, 86, 7, 0.4);
+    }
+
+    /* Overlays (Start & Game Over) */
+    .overlay-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: radial-gradient(circle at center, rgba(13, 18, 34, 0.55) 0%, rgba(10, 14, 26, 0.85) 100%);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: opacity 0.25s ease;
+    }
+
+    .overlay-backdrop.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 480px;
+      background: linear-gradient(180deg, rgba(28, 37, 63, 0.96) 0%, rgba(19, 25, 44, 0.98) 100%);
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      border-radius: 28px;
+      padding: 24px 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      text-align: center;
+      animation: popIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    /* Coin Balance Pill on Menu */
+    .coin-banner {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 209, 102, 0.14);
+      border: 1.5px solid rgba(255, 209, 102, 0.45);
+      color: var(--accent-gold);
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    /* Game Mode Selector Tabs */
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .mode-btn {
+      background: rgba(11, 15, 28, 0.65);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 8px 6px;
+      color: var(--text-muted);
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      transition: all 0.15s ease;
+    }
+
+    .mode-btn.selected {
+      border-color: var(--accent-gold);
+      background: rgba(255, 209, 102, 0.14);
+      color: #fff;
+      box-shadow: 0 0 14px rgba(255, 209, 102, 0.22);
+    }
+
+    .mode-icon { font-size: 18px; }
+    .mode-title { font-size: 12px; font-weight: 700; }
+    .mode-desc { font-size: 10px; opacity: 0.75; }
+
+    /* Hat / Accessory Selector */
+    .hat-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .hat-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      background: rgba(11, 15, 28, 0.65);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s, border-color 0.12s;
+    }
+
+    .hat-btn.selected {
+      border-color: var(--accent-pink);
+      background: rgba(255, 93, 143, 0.18);
+      transform: scale(1.08);
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.92) translateY(12px); opacity: 0; }
+      to { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .game-logo {
+      font-size: 38px;
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      background: linear-gradient(180deg, #ffffff 15%, #7ef9a9 55%, #2ee573 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 4px 12px rgba(46, 229, 115, 0.35));
+      margin-bottom: 6px;
+    }
+
+    .game-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .input-group {
+      margin-bottom: 18px;
+      text-align: left;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 7px;
+      padding-left: 4px;
+    }
+
+    #nicknameInput {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.14);
+      background: rgba(11, 15, 28, 0.75);
+      color: #fff;
+      font-family: inherit;
+      font-size: 17px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #nicknameInput:focus {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 4px rgba(46, 229, 115, 0.18);
+    }
+
+    /* Skin Selector */
+    .skin-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .skin-btn {
+      background: rgba(11, 15, 28, 0.65);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 8px 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.15s, border-color 0.15s, background 0.15s;
+    }
+
+    .skin-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .skin-btn.selected {
+      border-color: var(--accent-green);
+      background: rgba(46, 229, 115, 0.16);
+      box-shadow: 0 0 16px rgba(46, 229, 115, 0.25);
+    }
+
+    .skin-swatch {
+      width: 44px;
+      height: 18px;
+      border-radius: 999px;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+    }
+
+    .skin-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #dce6fa;
+    }
+
+    /* Primary Play Button */
+    .play-btn {
+      width: 100%;
+      padding: 15px 24px;
+      border-radius: 18px;
+      border: none;
+      background: linear-gradient(180deg, #3ef281 0%, #1ec95f 100%);
+      color: #092413;
+      font-family: inherit;
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #128c40, 0 14px 28px rgba(46, 229, 115, 0.35);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    }
+
+    .play-btn:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .play-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #128c40, 0 6px 14px rgba(46, 229, 115, 0.3);
+    }
+
+    .controls-hint {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .key-pill {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-weight: 700;
+    }
+
+    /* Game Over Summary */
+    .go-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: #ff6b8b;
+      margin-bottom: 4px;
+    }
+
+    .go-reason {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    .go-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .go-stat-card {
+      background: rgba(11, 15, 28, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .go-stat-val {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 2px;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 640px) {
+      #statsPanel {
+        top: 10px;
+        left: 10px;
+        padding: 8px 12px;
+        gap: 12px;
+      }
+      .stat-value { font-size: 17px; }
+      #leaderboardPanel {
+        top: 10px;
+        right: 10px;
+        width: 162px;
+        padding: 8px 10px;
+      }
+      .lb-item { font-size: 11px; padding: 3px 6px; }
+      #radarContainer {
+        width: 104px;
+        height: 104px;
+        bottom: 12px;
+        right: 12px;
+      }
+      #soundToggleBtn {
+        bottom: 12px;
+        left: 12px;
+        width: 40px;
+        height: 40px;
+        font-size: 17px;
+      }
+      #mobileBoostBtn {
+        display: block;
+      }
+      .modal-card {
+        padding: 22px 18px;
+      }
+      .game-logo { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Main Game Canvas -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Live HUD -->
+  <div class="hud-layer" id="hudLayer">
+    <div id="statsPanel" class="hud-card">
+      <div class="stat-box">
+        <span class="stat-label">Length</span>
+        <span class="stat-value gold" id="hudLength">100</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Kills</span>
+        <span class="stat-value pink" id="hudKills">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Coins</span>
+        <span class="stat-value" style="color: #ffe066;" id="hudCoins">0</span>
+      </div>
+      <div class="stat-box" id="timerBox" style="display: none;">
+        <span class="stat-label">Time</span>
+        <span class="stat-value" style="color: #4cc9f0;" id="hudTimer">02:00</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Rank</span>
+        <span class="stat-value" id="hudRank">#1</span>
+      </div>
+    </div>
+
+    <div id="powerupHud"></div>
+
+    <div id="leaderboardPanel" class="hud-card">
+      <div class="lb-title">
+        <span>Top Worms</span>
+        <span>🏆</span>
+      </div>
+      <ul class="lb-list" id="leaderboardList"></ul>
+    </div>
+
+    <button id="soundToggleBtn" title="Toggle Sound" aria-label="Toggle Sound">🔊</button>
+    <button id="mobileBoostBtn" type="button">⚡ BOOST</button>
+
+    <div id="radarContainer" class="hud-card">
+      <canvas id="radarCanvas" width="132" height="132"></canvas>
+    </div>
+  </div>
+
+  <!-- Start Screen Overlay -->
+  <div class="overlay-backdrop" id="startOverlay">
+    <div class="modal-card">
+      <div class="coin-banner">🪙 <span id="menuCoinCount">0</span> Coins</div>
+      <div class="game-logo">WORM ARENA .IO</div>
+      <div class="game-subtitle">Eat gourmet treats, trap rivals & rule the arena!</div>
+
+      <div class="input-group">
+        <label class="input-label" for="nicknameInput">Your Nickname</label>
+        <input type="text" id="nicknameInput" maxlength="16" placeholder="Enter worm name..." autocomplete="off" />
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Game Mode</label>
+        <div class="mode-grid" id="modeGrid">
+          <button type="button" class="mode-btn selected" data-mode="infinity">
+            <span class="mode-icon">♾️</span>
+            <span class="mode-title">Infinity</span>
+            <span class="mode-desc">Endless survival</span>
+          </button>
+          <button type="button" class="mode-btn" data-mode="time">
+            <span class="mode-icon">⏱️</span>
+            <span class="mode-title">Time Blitz</span>
+            <span class="mode-desc">2 Min high score</span>
+          </button>
+          <button type="button" class="mode-btn" data-mode="treasure">
+            <span class="mode-icon">💎</span>
+            <span class="mode-title">Treasure</span>
+            <span class="mode-desc">2x Gems & Coins</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Choose Worm Skin</label>
+        <div class="skin-grid" id="skinGrid"></div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Cute Accessory / Hat</label>
+        <div class="hat-row" id="hatRow"></div>
+      </div>
+
+      <button class="play-btn" id="startBtn">PLAY NOW</button>
+
+      <div class="controls-hint">
+        <span><span class="key-pill">Mouse</span> / <span class="key-pill">WASD</span> Steer</span>
+        <span><span class="key-pill">Click</span> / <span class="key-pill">Space</span> Boost</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div class="overlay-backdrop hidden" id="gameOverOverlay">
+    <div class="modal-card">
+      <div class="go-title">CHOMP! GAME OVER</div>
+      <div class="go-reason" id="goReason">You crashed into another worm!</div>
+
+      <div class="go-stats-grid">
+        <div class="go-stat-card">
+          <div class="stat-label">Final Length</div>
+          <div class="go-stat-val" style="color: var(--accent-gold);" id="goLength">0</div>
+        </div>
+        <div class="go-stat-card">
+          <div class="stat-label">Worms Defeated</div>
+          <div class="go-stat-val" style="color: var(--accent-pink);" id="goKills">0</div>
+        </div>
+        <div class="go-stat-card">
+          <div class="stat-label">Best Rank</div>
+          <div class="go-stat-val" style="color: var(--accent-green);" id="goRank">#1</div>
+        </div>
+        <div class="go-stat-card">
+          <div class="stat-label">Survival Time</div>
+          <div class="go-stat-val" id="goTime">0s</div>
+        </div>
+      </div>
+
+      <button class="play-btn" id="playAgainBtn">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * WORM ARENA .IO
+     * Single-file HTML5 Canvas arcade game inspired by Worms Zone .io & Slither.io.
+     * Features:
+     * - Circular arena with lethal glowing laser perimeter
+     * - Smooth spline/distance-constrained body segment interpolation
+     * - Mouse, Keyboard (WASD/Arrows), and Touch joystick/drag controls
+     * - Speed boost with mass shedding and glowing trail particles
+     * - Spatial grid partitioning for fast collision & food queries
+     * - Smart AI bots that hunt food, avoid walls/bodies, and attempt cut-offs
+     * - Web Audio API synthesized sound effects
+     */
+
+    (() => {
+      'use strict';
+
+      // =========================================================================
+      // 1. CONFIGURATION & SKINS
+      // =========================================================================
+      const CONFIG = {
+        ARENA_RADIUS: 2400,
+        BOT_COUNT: 22,
+        INITIAL_FOOD_COUNT: 520,
+        BASE_SPEED: 205,
+        BOOST_SPEED: 375,
+        BASE_TURN_SPEED: 4.3,
+        INITIAL_MASS: 100,
+        MIN_BOOST_MASS: 65,
+        BOOST_MASS_DRAIN: 22, // mass per second
+        SEGMENT_SPACING_RATIO: 0.44, // spacing relative to worm radius
+        GRID_CELL_SIZE: 220,
+        CAMERA_LERP: 0.1
+      };
+
+      const SKINS = [
+        {
+          id: 'emerald',
+          name: 'Viper',
+          colors: ['#2ee573', '#16a34a', '#86efac'],
+          eyeColor: '#ffffff',
+          glow: 'rgba(46, 229, 115, 0.45)',
+          swatch: 'linear-gradient(90deg, #16a34a, #2ee573, #86efac)'
+        },
+        {
+          id: 'candy',
+          name: 'Candy',
+          colors: ['#ff5d8f', '#ffbe0b', '#3a86ff'],
+          eyeColor: '#ffffff',
+          glow: 'rgba(255, 93, 143, 0.45)',
+          swatch: 'repeating-linear-gradient(90deg, #ff5d8f 0 10px, #ffbe0b 10px 20px, #3a86ff 20px 30px)'
+        },
+        {
+          id: 'cyber',
+          name: 'Neon',
+          colors: ['#00f5d4', '#9b5de5', '#f15bb5'],
+          eyeColor: '#fff700',
+          glow: 'rgba(0, 245, 212, 0.55)',
+          swatch: 'linear-gradient(90deg, #00f5d4, #9b5de5, #f15bb5)'
+        },
+        {
+          id: 'lava',
+          name: 'Magma',
+          colors: ['#ff4d00', '#ff9e00', '#2b1918'],
+          eyeColor: '#ffea00',
+          glow: 'rgba(255, 77, 0, 0.5)',
+          swatch: 'repeating-linear-gradient(90deg, #ff4d00 0 12px, #ff9e00 12px 22px, #2b1918 22px 28px)'
+        },
+        {
+          id: 'royal',
+          name: 'Royal',
+          colors: ['#4361ee', '#4cc9f0', '#ffd166'],
+          eyeColor: '#ffffff',
+          glow: 'rgba(76, 201, 240, 0.45)',
+          swatch: 'linear-gradient(90deg, #4361ee, #4cc9f0, #ffd166)'
+        },
+        {
+          id: 'bubblegum',
+          name: 'Pastel',
+          colors: ['#ff8fab', '#ffc2d1', '#bde0fe'],
+          eyeColor: '#ffffff',
+          glow: 'rgba(255, 143, 171, 0.45)',
+          swatch: 'linear-gradient(90deg, #ff8fab, #ffc2d1, #bde0fe)'
+        },
+        {
+          id: 'toxic',
+          name: 'Toxic',
+          colors: ['#ccff00', '#70e000', '#1a2408'],
+          eyeColor: '#ff2a5f',
+          glow: 'rgba(204, 255, 0, 0.5)',
+          swatch: 'repeating-linear-gradient(90deg, #ccff00 0 12px, #1a2408 12px 20px)'
+        },
+        {
+          id: 'sunset',
+          name: 'Sunset',
+          colors: ['#ff006e', '#fb5607', '#ffbe0b'],
+          eyeColor: '#ffffff',
+          glow: 'rgba(251, 86, 7, 0.45)',
+          swatch: 'linear-gradient(90deg, #ff006e, #fb5607, #ffbe0b)'
+        }
+      ];
+
+      const BOT_NAMES = [
+        'NoodleKing', 'SlitherPro', 'Chompy', 'ZigZag', 'GummyWorm',
+        'ViperX', 'TurboTail', 'WiggleBoss', 'NeonBite', 'SnackAttack',
+        'SirSlither', 'JellyBean', 'MegaByte', 'PixelSnake', 'Cosmo',
+        'BobaWorm', 'TacoBellz', 'Spaghetti', 'Draco', 'Pudding',
+        'Zappy', 'Munchkin', 'Ramen', 'CobraKai', 'Swirly', 'Pickles'
+      ];
+
+      const FOOD_COLORS = [
+        '#ff595e', '#ffca3a', '#8ac926', '#1982c4', '#6a4c93',
+        '#ff007f', '#00f5d4', '#ff9f1c', '#b5179e', '#4cc9f0'
+      ];
+
+      const POWERUP_TYPES = [
+        { id: 'magnet', label: 'MAGNET', icon: '🧲', color: '#ff5d8f', duration: 10 },
+        { id: 'double', label: '2X MASS', icon: '⭐', color: '#ffd166', duration: 10 },
+        { id: 'speed', label: 'TURBO', icon: '⚡', color: '#00f5d4', duration: 8 },
+        { id: 'vision', label: 'ZOOM OUT', icon: '🔭', color: '#9b5de5', duration: 10 }
+      ];
+
+      const HATS = [
+        { id: 'none', icon: '🚫', label: 'None' },
+        { id: 'crown', icon: '👑', label: 'Crown' },
+        { id: 'party', icon: '🥳', label: 'Party' },
+        { id: 'devil', icon: '😈', label: 'Horns' },
+        { id: 'cowboy', icon: '🤠', label: 'Cowboy' },
+        { id: 'halo', icon: '😇', label: 'Halo' }
+      ];
+      // =========================================================================
+      // 2. SYNTHESIZED SOUND ENGINE (WEB AUDIO API)
+      // =========================================================================
+      class SoundEngine {
+        constructor() {
+          this.ctx = null;
+          this.muted = false;
+          this.lastEatTime = 0;
+          this.lastBoostSoundTime = 0;
+        }
+
+        init() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              this.ctx = new AudioCtx();
+            }
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+          }
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          return this.muted;
+        }
+
+        playEat(isBig = false) {
+          if (this.muted || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          if (now - this.lastEatTime < 0.045) return; // prevent audio spam
+          this.lastEatTime = now;
+
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          const baseFreq = isBig ? 420 : 540 + Math.random() * 180;
+          osc.frequency.setValueAtTime(baseFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.45, now + 0.07);
+
+          gain.gain.setValueAtTime(isBig ? 0.11 : 0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.085);
+        }
+
+        playBoostTick() {
+          if (this.muted || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          if (now - this.lastBoostSoundTime < 0.14) return;
+          this.lastBoostSoundTime = now;
+
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(240, now + 0.11);
+
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.13);
+        }
+
+        playKill() {
+          if (this.muted || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + i * 0.055);
+            gain.gain.setValueAtTime(0.09, now + i * 0.055);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.055 + 0.16);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + i * 0.055);
+            osc.stop(now + i * 0.055 + 0.17);
+          });
+        }
+
+        playPowerup() {
+          if (this.muted || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const notes = [440, 554.37, 659.25, 880];
+          notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.045);
+            gain.gain.setValueAtTime(0.08, now + i * 0.045);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.045 + 0.14);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + i * 0.045);
+            osc.stop(now + i * 0.045 + 0.15);
+          });
+        }
+
+        playCrash() {
+          if (this.muted || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(190, now);
+          osc.frequency.exponentialRampToValueAtTime(42, now + 0.38);
+
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.42);
+        }
+      }
+
+      const sound = new SoundEngine();
+
+      // =========================================================================
+      // 3. MATH & UTILITY HELPERS
+      // =========================================================================
+      function normalizeAngle(a) {
+        while (a > Math.PI) a -= Math.PI * 2;
+        while (a < -Math.PI) a += Math.PI * 2;
+        return a;
+      }
+
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+
+      function distSq(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        return dx * dx + dy * dy;
+      }
+
+      function randomPointInCircle(maxRadius) {
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * maxRadius;
+        return {
+          x: Math.cos(angle) * r,
+          y: Math.sin(angle) * r
+        };
+      }
+
+      // =========================================================================
+      // 4. SPATIAL HASH GRID FOR FAST QUERIES
+      // =========================================================================
+      class SpatialGrid {
+        constructor(cellSize) {
+          this.cellSize = cellSize;
+          this.cells = new Map();
+        }
+
+        clear() {
+          this.cells.clear();
+        }
+
+        _key(cx, cy) {
+          return `${cx},${cy}`;
+        }
+
+        insert(x, y, item) {
+          const cx = Math.floor(x / this.cellSize);
+          const cy = Math.floor(y / this.cellSize);
+          const key = this._key(cx, cy);
+          let bucket = this.cells.get(key);
+          if (!bucket) {
+            bucket = [];
+            this.cells.set(key, bucket);
+          }
+          bucket.push(item);
+        }
+
+        queryRadius(x, y, radius) {
+          const minCx = Math.floor((x - radius) / this.cellSize);
+          const maxCx = Math.floor((x + radius) / this.cellSize);
+          const minCy = Math.floor((y - radius) / this.cellSize);
+          const maxCy = Math.floor((y + radius) / this.cellSize);
+          const results = [];
+          for (let cx = minCx; cx <= maxCx; cx++) {
+            for (let cy = minCy; cy <= maxCy; cy++) {
+              const bucket = this.cells.get(this._key(cx, cy));
+              if (bucket) {
+                for (let i = 0; i < bucket.length; i++) {
+                  results.push(bucket[i]);
+                }
+              }
+            }
+          }
+          return results;
+        }
+      }
+
+      // =========================================================================
+      // 5. WORM ENTITY CLASS
+      // =========================================================================
+      let nextWormId = 1;
+
+      class Worm {
+        constructor({ name, x, y, angle, skin, hat = 'none', isPlayer = false, initialMass = CONFIG.INITIAL_MASS }) {
+          this.id = nextWormId++;
+          this.name = name;
+          this.skin = skin;
+          this.hat = hat;
+          this.isPlayer = isPlayer;
+          this.alive = true;
+
+          this.x = x;
+          this.y = y;
+          this.angle = angle;
+          this.targetAngle = angle;
+
+          this.mass = initialMass;
+          this.kills = 0;
+          this.coinsEarned = 0;
+          this.killStreak = 0;
+          this.lastKillTime = 0;
+          this.spawnTime = performance.now();
+          this.bestRank = 99;
+          this.blinkTimer = 2 + Math.random() * 3;
+          this.isBlinking = false;
+          // Active power-up timers (in seconds)
+          this.powerups = {
+            magnet: 0,
+            double: 0,
+            speed: 0,
+            vision: 0
+          };
+
+          // AI state
+          this.aiTimer = 0;
+          this.aiWanderAngle = angle;
+          this.aiBoostTimer = 0;
+
+          // Build initial spine segments
+          this.segments = [];
+          const count = this.getDesiredSegmentCount();
+          const spacing = this.getSegmentSpacing();
+          for (let i = 0; i < count; i++) {
+            this.segments.push({
+              x: x - Math.cos(angle) * spacing * i,
+              y: y - Math.sin(angle) * spacing * i
+            });
+          }
+        }
+
+        getRadius() {
+          // Smooth growth curve: starts around 15px, scales up gently to ~46px
+          return Math.min(48, 14 + Math.pow(Math.max(0, this.mass - 40), 0.44) * 1.45);
+        }
+
+        getSegmentSpacing() {
+          return Math.max(6, this.getRadius() * CONFIG.SEGMENT_SPACING_RATIO);
+        }
+
+        getDesiredSegmentCount() {
+          return Math.min(420, Math.max(12, Math.floor(10 + this.mass / 7.5)));
+        }
+
+        getTurnSpeed() {
+          // Larger worms turn slightly wider for authentic arcade feel
+          const sizeFactor = Math.max(0.58, 1 - (this.getRadius() - 14) / 85);
+          return CONFIG.BASE_TURN_SPEED * sizeFactor;
+        }
+
+        update(dt, game) {
+          if (!this.alive) return;
+
+          // Blink animation timer
+          this.blinkTimer -= dt;
+          if (this.blinkTimer <= 0) {
+            if (!this.isBlinking) {
+              this.isBlinking = true;
+              this.blinkTimer = 0.13;
+            } else {
+              this.isBlinking = false;
+              this.blinkTimer = 2.4 + Math.random() * 3.2;
+            }
+          }
+
+          // Tick down active power-ups
+          for (const key in this.powerups) {
+            if (this.powerups[key] > 0) {
+              this.powerups[key] = Math.max(0, this.powerups[key] - dt);
+            }
+          }
+
+          // AI decision making
+          if (!this.isPlayer) {
+            this.updateAI(dt, game);
+          }
+
+          // Validate boost eligibility
+          const canBoost = this.mass > CONFIG.MIN_BOOST_MASS;
+          const isBoostingNow = this.boosting && canBoost;
+
+          const speedMult = this.powerups.speed > 0 ? 1.28 : 1;
+          const speed = (isBoostingNow ? CONFIG.BOOST_SPEED : CONFIG.BASE_SPEED) * speedMult;
+          const turnSpeed = this.getTurnSpeed() * (this.powerups.speed > 0 ? 1.15 : 1);
+
+          // Smooth angular steering
+          const angleDiff = normalizeAngle(this.targetAngle - this.angle);
+          const maxTurn = turnSpeed * dt;
+          if (Math.abs(angleDiff) <= maxTurn) {
+            this.angle = this.targetAngle;
+          } else {
+            this.angle += Math.sign(angleDiff) * maxTurn;
+          }
+          this.angle = normalizeAngle(this.angle);
+
+          // Move head forward
+          this.x += Math.cos(this.angle) * speed * dt;
+          this.y += Math.sin(this.angle) * speed * dt;
+
+          // Boost mass shedding & visual trail
+          if (isBoostingNow) {
+            const drained = CONFIG.BOOST_MASS_DRAIN * dt;
+            this.mass = Math.max(CONFIG.MIN_BOOST_MASS, this.mass - drained);
+            this.boostDropAccumulator += drained;
+
+            if (this.isPlayer) {
+              sound.playBoostTick();
+            }
+
+            // Emit glowing boost particle
+            const tail = this.segments[this.segments.length - 1] || { x: this.x, y: this.y };
+            if (Math.random() < 0.7) {
+              game.spawnParticle(
+                tail.x + (Math.random() - 0.5) * 10,
+                tail.y + (Math.random() - 0.5) * 10,
+                this.skin.colors[0],
+                this.getRadius() * 0.45,
+                0.35
+              );
+            }
+
+            // Drop mass pellet behind tail every 8 mass drained
+            if (this.boostDropAccumulator >= 8) {
+              this.boostDropAccumulator -= 8;
+              game.spawnFood({
+                x: tail.x + (Math.random() - 0.5) * 8,
+                y: tail.y + (Math.random() - 0.5) * 8,
+                value: 6,
+                color: this.skin.colors[0],
+                isLoot: false
+              });
+            }
+          }
+
+          // Follow-the-leader segment constraint solver (keeps exact spacing)
+          this.segments[0].x = this.x;
+          this.segments[0].y = this.y;
+
+          const desiredCount = this.getDesiredSegmentCount();
+          while (this.segments.length < desiredCount) {
+            const last = this.segments[this.segments.length - 1];
+            this.segments.push({ x: last.x, y: last.y });
+          }
+          while (this.segments.length > desiredCount) {
+            this.segments.pop();
+          }
+
+          const spacing = this.getSegmentSpacing();
+          for (let i = 1; i < this.segments.length; i++) {
+            const prev = this.segments[i - 1];
+            const curr = this.segments[i];
+            const dx = prev.x - curr.x;
+            const dy = prev.y - curr.y;
+            const d = Math.hypot(dx, dy);
+            if (d > 0.0001) {
+              const ratio = (d - spacing) / d;
+              curr.x += dx * ratio;
+              curr.y += dy * ratio;
+            }
+          }
+
+          // Arena Perimeter Check (Lethal Laser Wall)
+          const distFromCenter = Math.hypot(this.x, this.y);
+          if (distFromCenter + this.getRadius() * 0.75 >= CONFIG.ARENA_RADIUS) {
+            game.killWorm(this, null, 'You hit the electric arena border!');
+          }
+        }
+
+        updateAI(dt, game) {
+          this.aiTimer -= dt;
+          if (this.aiBoostTimer > 0) {
+            this.aiBoostTimer -= dt;
+            if (this.aiBoostTimer <= 0) this.boosting = false;
+          }
+
+          const radius = this.getRadius();
+          const lookAhead = 150 + radius * 3.5;
+
+          // 1. Border avoidance (high priority)
+          const distCenter = Math.hypot(this.x, this.y);
+          if (distCenter > CONFIG.ARENA_RADIUS - 320) {
+            const toCenterAngle = Math.atan2(-this.y, -this.x);
+            this.targetAngle = toCenterAngle;
+            this.boosting = false;
+            return;
+          }
+
+          // 2. Obstacle / Rival body avoidance
+          const nearbySegments = game.segmentGrid.queryRadius(this.x, this.y, lookAhead);
+          let avoidX = 0;
+          let avoidY = 0;
+          let dangerCount = 0;
+
+          for (let i = 0; i < nearbySegments.length; i++) {
+            const seg = nearbySegments[i];
+            if (seg.wormId === this.id) continue;
+
+            const dx = seg.x - this.x;
+            const dy = seg.y - this.y;
+            const d = Math.hypot(dx, dy);
+            const safeDist = radius + seg.radius + 75;
+
+            if (d < safeDist && d > 0.01) {
+              // Check if segment is roughly in front hemisphere
+              const angleToSeg = Math.atan2(dy, dx);
+              const relAngle = Math.abs(normalizeAngle(angleToSeg - this.angle));
+              if (relAngle < Math.PI * 0.65) {
+                const weight = (safeDist - d) / safeDist;
+                avoidX -= (dx / d) * weight * 2.5;
+                avoidY -= (dy / d) * weight * 2.5;
+                dangerCount++;
+              }
+            }
+          }
+
+          if (dangerCount > 0) {
+            this.targetAngle = Math.atan2(avoidY, avoidX);
+            // Small chance to panic boost away from danger if sizable
+            if (this.mass > 160 && Math.random() < 0.02) {
+              this.boosting = true;
+              this.aiBoostTimer = 0.45;
+            }
+            return;
+          }
+
+          // 3. Food & Cut-off Opportunity Search
+          if (this.aiTimer <= 0) {
+            this.aiTimer = 0.14 + Math.random() * 0.12;
+
+            const foods = game.foodGrid.queryRadius(this.x, this.y, 440);
+            let bestFood = null;
+            let bestScore = -Infinity;
+
+            for (let i = 0; i < foods.length; i++) {
+              const f = foods[i];
+              const d = Math.hypot(f.x - this.x, f.y - this.y);
+              if (d < 10) continue;
+              const angleToFood = Math.atan2(f.y - this.y, f.x - this.x);
+              const turnPenalty = Math.abs(normalizeAngle(angleToFood - this.angle)) * 65;
+              const score = (f.value * 24) - d - turnPenalty;
+              if (score > bestScore) {
+                bestScore = score;
+                bestFood = f;
+              }
+            }
+
+            if (bestFood) {
+              this.targetAngle = Math.atan2(bestFood.y - this.y, bestFood.x - this.x);
+              // Boost toward high-value death loot clusters
+              if (bestFood.isLoot && bestFood.value >= 14 && this.mass > 140 && Math.random() < 0.25) {
+                this.boosting = true;
+                this.aiBoostTimer = 0.65;
+              }
+            } else {
+              // Gentle wandering
+              this.aiWanderAngle += (Math.random() - 0.5) * 1.1;
+              this.targetAngle = this.aiWanderAngle;
+            }
+          }
+        }
+      }
+
+      // =========================================================================
+      // 6. MAIN GAME ENGINE
+      // =========================================================================
+      class WormGame {
+        constructor() {
+          this.canvas = document.getElementById('gameCanvas');
+          this.ctx = this.canvas.getContext('2d');
+          this.radarCanvas = document.getElementById('radarCanvas');
+          this.radarCtx = this.radarCanvas.getContext('2d');
+
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+          this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+          this.worms = [];
+          this.foods = [];
+          this.powerupItems = [];
+          this.particles = [];
+          this.floatingTexts = [];
+          this.leaderWormId = null;
+
+          this.foodGrid = new SpatialGrid(CONFIG.GRID_CELL_SIZE);
+          this.segmentGrid = new SpatialGrid(CONFIG.GRID_CELL_SIZE);
+
+          this.player = null;
+          this.selectedSkin = SKINS[0];
+          this.selectedHat = HATS[0];
+          this.selectedMode = 'infinity'; // infinity | time | treasure
+          this.totalCoins = parseInt(localStorage.getItem('worm_arena_coins') || '0', 10);
+          this.modeTimeRemaining = 120;
+          this.gameState = 'MENU'; // MENU | PLAYING | GAMEOVER
+
+          // Camera state
+          this.camX = 0;
+          this.camY = 0;
+          this.camZoom = 1;
+          this.shakeTime = 0;
+          this.shakeIntensity = 0;
+
+          // Input state
+          this.pointerActive = false;
+          this.pointerScreenX = this.width / 2;
+          this.pointerScreenY = this.height / 2;
+          this.keys = {};
+          this.touchId = null;
+
+          // UI throttling
+          this.uiTimer = 0;
+          this.timeElapsed = 0;
+
+          this.setupCanvas();
+          this.setupUI();
+          this.setupInputs();
+          this.populateWorld();
+
+          this.lastFrameTime = performance.now();
+          requestAnimationFrame((t) => this.loop(t));
+        }
+
+        setupCanvas() {
+          const resize = () => {
+            this.width = window.innerWidth;
+            this.height = window.innerHeight;
+            this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+            this.canvas.width = this.width * this.dpr;
+            this.canvas.height = this.height * this.dpr;
+            this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+          };
+          resize();
+          window.addEventListener('resize', resize);
+        }
+
+        setupUI() {
+          // Build skin selector buttons
+          const skinGrid = document.getElementById('skinGrid');
+          SKINS.forEach((skin, idx) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'skin-btn' + (idx === 0 ? ' selected' : '');
+            btn.innerHTML = `
+              <div class="skin-swatch" style="background: ${skin.swatch};"></div>
+              <span class="skin-name">${skin.name}</span>
+            `;
+            btn.addEventListener('click', () => {
+              document.querySelectorAll('.skin-btn').forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              this.selectedSkin = skin;
+            });
+            skinGrid.appendChild(btn);
+          });
+
+          // Build hat selector buttons
+          const hatRow = document.getElementById('hatRow');
+          HATS.forEach((hat, idx) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'hat-btn' + (idx === 0 ? ' selected' : '');
+            btn.title = hat.label;
+            btn.textContent = hat.icon;
+            btn.addEventListener('click', () => {
+              document.querySelectorAll('.hat-btn').forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              this.selectedHat = hat;
+            });
+            hatRow.appendChild(btn);
+          });
+
+          // Mode selector buttons
+          document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+              btn.classList.add('selected');
+              this.selectedMode = btn.dataset.mode;
+            });
+          });
+
+          document.getElementById('menuCoinCount').textContent = this.totalCoins;
+
+          // Start & Play Again button handlers
+          const handleStart = () => {
+            sound.init();
+            const rawName = document.getElementById('nicknameInput').value.trim();
+            const nickname = rawName || 'Player_' + Math.floor(10 + Math.random() * 89);
+            this.startPlayerRun(nickname, this.selectedSkin);
+          };
+
+          document.getElementById('startBtn').addEventListener('click', handleStart);
+          document.getElementById('playAgainBtn').addEventListener('click', handleStart);
+          document.getElementById('nicknameInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleStart();
+          });
+
+          // Sound toggle
+          const soundBtn = document.getElementById('soundToggleBtn');
+          soundBtn.addEventListener('click', () => {
+            sound.init();
+            const muted = sound.toggleMute();
+            soundBtn.textContent = muted ? '🔇' : '🔊';
+          });
+
+          // Mobile Boost button
+          const mobileBoostBtn = document.getElementById('mobileBoostBtn');
+          const setMobileBoost = (active) => {
+            if (this.player && this.player.alive) {
+              this.player.boosting = active;
+            }
+            mobileBoostBtn.classList.toggle('active', active);
+          };
+          mobileBoostBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            sound.init();
+            setMobileBoost(true);
+          }, { passive: false });
+          mobileBoostBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            setMobileBoost(false);
+          }, { passive: false });
+          mobileBoostBtn.addEventListener('mousedown', () => setMobileBoost(true));
+          mobileBoostBtn.addEventListener('mouseup', () => setMobileBoost(false));
+          mobileBoostBtn.addEventListener('mouseleave', () => setMobileBoost(false));
+        }
+
+        setupInputs() {
+          window.addEventListener('mousemove', (e) => {
+            this.pointerActive = true;
+            this.pointerScreenX = e.clientX;
+            this.pointerScreenY = e.clientY;
+          });
+
+          window.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('.modal-card')) return;
+            sound.init();
+            this.pointerActive = true;
+            this.pointerScreenX = e.clientX;
+            this.pointerScreenY = e.clientY;
+            if (this.player && this.player.alive && e.button === 0) {
+              this.player.boosting = true;
+            }
+          });
+
+          window.addEventListener('mouseup', (e) => {
+            if (this.player && e.button === 0) {
+              this.player.boosting = false;
+            }
+          });
+
+          window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
+              this.pointerActive = false;
+            }
+            if (e.code === 'Space' && this.player && this.player.alive) {
+              e.preventDefault();
+              this.player.boosting = true;
+            }
+          });
+
+          window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+            if (e.code === 'Space' && this.player) {
+              this.player.boosting = false;
+            }
+          });
+
+          this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            sound.init();
+            if (e.changedTouches.length > 0) {
+              const t = e.changedTouches[0];
+              this.touchId = t.identifier;
+              this.pointerActive = true;
+              this.pointerScreenX = t.clientX;
+              this.pointerScreenY = t.clientY;
+            }
+          }, { passive: false });
+
+          this.canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              const t = e.changedTouches[i];
+              if (t.identifier === this.touchId) {
+                this.pointerActive = true;
+                this.pointerScreenX = t.clientX;
+                this.pointerScreenY = t.clientY;
+              }
+            }
+          }, { passive: false });
+
+          this.canvas.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              if (e.changedTouches[i].identifier === this.touchId) {
+                this.touchId = null;
+              }
+            }
+          });
+        }
+
+        populateWorld() {
+          this.worms = [];
+          this.foods = [];
+          this.powerupItems = [];
+          this.particles = [];
+          this.floatingTexts = [];
+
+          for (let i = 0; i < CONFIG.INITIAL_FOOD_COUNT; i++) {
+            this.spawnRandomFood();
+          }
+          for (let i = 0; i < 14; i++) {
+            this.spawnPowerupItem();
+          }
+          for (let i = 0; i < CONFIG.BOT_COUNT; i++) {
+            this.spawnBot(true);
+          }
+        }
+
+        startPlayerRun(nickname, skin) {
+          document.getElementById('startOverlay').classList.add('hidden');
+          document.getElementById('gameOverOverlay').classList.add('hidden');
+
+          // Clear center spawn safe-zone from enemy worms so player never dies instantly
+          const safeSpawnRadius = 380;
+          this.worms = this.worms.filter(w => !w.isPlayer && Math.hypot(w.x, w.y) > safeSpawnRadius);
+          while (this.worms.length < CONFIG.BOT_COUNT) {
+            this.spawnBot(false);
+          }
+
+          const startAngle = Math.random() * Math.PI * 2;
+          this.player = new Worm({
+            name: nickname,
+            x: 0,
+            y: 0,
+            angle: startAngle,
+            skin: skin,
+            hat: this.selectedHat ? this.selectedHat.id : 'none',
+            isPlayer: true,
+            initialMass: CONFIG.INITIAL_MASS
+          });
+          this.player.boosting = false;
+          this.player.boostDropAccumulator = 0;
+
+          this.worms.push(this.player);
+          this.camX = 0;
+          this.camY = 0;
+          this.camZoom = 1.02;
+          this.gameState = 'PLAYING';
+
+          // Mode setup
+          const timerBox = document.getElementById('timerBox');
+          if (this.selectedMode === 'time') {
+            this.modeTimeRemaining = 120;
+            timerBox.style.display = 'flex';
+          } else {
+            timerBox.style.display = 'none';
+          }
+
+          if (this.selectedMode === 'treasure') {
+            for (let i = 0; i < 45; i++) {
+              const pt = randomPointInCircle(CONFIG.ARENA_RADIUS - 140);
+              this.spawnFood({
+                x: pt.x,
+                y: pt.y,
+                value: 16,
+                color: '#00f5d4',
+                isGem: true,
+                treatType: 'gem'
+              });
+            }
+          }
+
+          this.updateHUD();
+        }
+
+        spawnFood({ x, y, value = 6, color = null, isLoot = false, isGem = false, treatType = null }) {
+          const treats = ['orb', 'orb', 'orb', 'donut', 'burger', 'watermelon', 'icecream', 'star'];
+          const chosenTreat = treatType || (isGem ? 'gem' : treats[Math.floor(Math.random() * treats.length)]);
+          this.foods.push({
+            x,
+            y,
+            value,
+            color: color || FOOD_COLORS[Math.floor(Math.random() * FOOD_COLORS.length)],
+            radius: isLoot ? Math.min(15, 7 + value * 0.25) : (isGem ? 11 : (chosenTreat === 'orb' ? 5.5 + Math.random() * 2.5 : 10)),
+            isLoot,
+            isGem,
+            treatType: chosenTreat,
+            phase: Math.random() * Math.PI * 2,
+            _eaten: false
+          });
+        }
+
+        spawnRandomFood() {
+          const pt = randomPointInCircle(CONFIG.ARENA_RADIUS - 80);
+          const isGem = this.selectedMode === 'treasure' ? Math.random() < 0.22 : Math.random() < 0.04;
+          const isSpecialTreat = !isGem && Math.random() < 0.14;
+          this.spawnFood({
+            x: pt.x,
+            y: pt.y,
+            value: isGem ? 16 : (isSpecialTreat ? 11 : 5),
+            isGem,
+            treatType: isGem ? 'gem' : (isSpecialTreat ? null : 'orb')
+          });
+        }
+
+        spawnPowerupItem() {
+          const pt = randomPointInCircle(CONFIG.ARENA_RADIUS - 180);
+          const type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+          this.powerupItems.push({
+            x: pt.x,
+            y: pt.y,
+            type,
+            radius: 18,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+
+        spawnBot(allowCenter = false) {
+          let pt = randomPointInCircle(CONFIG.ARENA_RADIUS - 260);
+          if (!allowCenter && this.player && this.player.alive) {
+            let tries = 0;
+            while (Math.hypot(pt.x - this.player.x, pt.y - this.player.y) < 620 && tries < 10) {
+              pt = randomPointInCircle(CONFIG.ARENA_RADIUS - 260);
+              tries++;
+            }
+          }
+          const usedNames = new Set(this.worms.map(w => w.name));
+          const available = BOT_NAMES.filter(n => !usedNames.has(n));
+          const name = available.length > 0
+            ? available[Math.floor(Math.random() * available.length)]
+            : 'Bot_' + Math.floor(100 + Math.random() * 899);
+
+          const skin = SKINS[Math.floor(Math.random() * SKINS.length)];
+          const hat = Math.random() < 0.35 ? HATS[1 + Math.floor(Math.random() * (HATS.length - 1))].id : 'none';
+          const initialMass = 90 + Math.random() * 260;
+
+          const bot = new Worm({
+            name,
+            x: pt.x,
+            y: pt.y,
+            angle: Math.random() * Math.PI * 2,
+            skin,
+            hat,
+            isPlayer: false,
+            initialMass
+          });
+          bot.boosting = false;
+          bot.boostDropAccumulator = 0;
+          this.worms.push(bot);
+        }
+
+        spawnParticle(x, y, color, radius = 5, life = 0.45) {
+          const a = Math.random() * Math.PI * 2;
+          const spd = 25 + Math.random() * 95;
+          this.particles.push({
+            x,
+            y,
+            vx: Math.cos(a) * spd,
+            vy: Math.sin(a) * spd,
+            color,
+            radius,
+            life,
+            maxLife: life
+          });
+        }
+
+        spawnFloatingText(x, y, text, color = '#ffffff') {
+          this.floatingTexts.push({
+            x,
+            y,
+            text,
+            color,
+            life: 1.15,
+            maxLife: 1.15
+          });
+        }
+
+        triggerShake(intensity, duration) {
+          this.shakeIntensity = intensity;
+          this.shakeTime = duration;
+        }
+
+        killWorm(victim, killer = null, customReason = null) {
+          if (!victim.alive) return;
+          victim.alive = false;
+
+          // Burst victim's body into glowing loot orbs
+          const step = Math.max(1, Math.floor(victim.segments.length / 45));
+          const lootValue = Math.max(8, Math.min(26, Math.floor(victim.mass / Math.max(12, victim.segments.length / step))));
+          for (let i = 0; i < victim.segments.length; i += step) {
+            const seg = victim.segments[i];
+            const color = victim.skin.colors[i % victim.skin.colors.length];
+            this.spawnFood({
+              x: seg.x + (Math.random() - 0.5) * 14,
+              y: seg.y + (Math.random() - 0.5) * 14,
+              value: lootValue,
+              color,
+              isLoot: true,
+              treatType: i % (step * 3) === 0 ? 'donut' : 'orb'
+            });
+          }
+
+          for (let k = 0; k < 20; k++) {
+            this.spawnParticle(victim.x, victim.y, victim.skin.colors[0], 7, 0.55);
+          }
+
+          if (killer && killer.alive) {
+            killer.kills += 1;
+            const now = performance.now();
+            if (now - killer.lastKillTime < 6000) {
+              killer.killStreak += 1;
+            } else {
+              killer.killStreak = 1;
+            }
+            killer.lastKillTime = now;
+
+            if (killer.isPlayer) {
+              sound.playKill();
+              this.triggerShake(7, 0.22);
+              const streakLabel = killer.killStreak > 1 ? ` (${killer.killStreak}x STREAK!)` : '';
+              this.spawnFloatingText(victim.x, victim.y - 20, `ELIMINATED ${victim.name}!${streakLabel}`, '#ffbe0b');
+            }
+          }
+
+          if (victim.isPlayer) {
+            sound.playCrash();
+            this.triggerShake(14, 0.45);
+            this.gameState = 'GAMEOVER';
+
+            const runCoins = Math.floor(victim.mass / 12) + victim.kills * 15 + victim.coinsEarned;
+            this.totalCoins += runCoins;
+            localStorage.setItem('worm_arena_coins', String(this.totalCoins));
+            document.getElementById('menuCoinCount').textContent = this.totalCoins;
+
+            const survivedSec = Math.max(1, Math.floor((performance.now() - victim.spawnTime) / 1000));
+            document.getElementById('goReason').textContent =
+              customReason || (killer ? `You crashed into ${killer.name}!` : 'You crashed into another worm!');
+            document.getElementById('goLength').textContent = Math.floor(victim.mass);
+            document.getElementById('goKills').textContent = victim.kills;
+            document.getElementById('goRank').textContent = '#' + victim.bestRank;
+            document.getElementById('goTime').textContent = `${survivedSec}s (+${runCoins} 🪙)`;
+
+            setTimeout(() => {
+              document.getElementById('gameOverOverlay').classList.remove('hidden');
+            }, 420);
+          }
+        }
+
+        update(dt) {
+          this.timeElapsed += dt;
+          if (this.shakeTime > 0) this.shakeTime = Math.max(0, this.shakeTime - dt);
+
+          // Time Blitz countdown
+          if (this.gameState === 'PLAYING' && this.selectedMode === 'time' && this.player && this.player.alive) {
+            this.modeTimeRemaining -= dt;
+            if (this.modeTimeRemaining <= 0) {
+              this.modeTimeRemaining = 0;
+              this.killWorm(this.player, null, "Time's Up! Great Blitz run!");
+            }
+          }
+
+          // Update player steering angle from pointer or keyboard
+          if (this.player && this.player.alive) {
+            if (this.pointerActive) {
+              const dx = this.pointerScreenX - this.width / 2;
+              const dy = this.pointerScreenY - this.height / 2;
+              if (dx * dx + dy * dy > 16) {
+                this.player.targetAngle = Math.atan2(dy, dx);
+              }
+            } else {
+              let kx = 0;
+              let ky = 0;
+              if (this.keys['ArrowLeft'] || this.keys['KeyA']) kx -= 1;
+              if (this.keys['ArrowRight'] || this.keys['KeyD']) kx += 1;
+              if (this.keys['ArrowUp'] || this.keys['KeyW']) ky -= 1;
+              if (this.keys['ArrowDown'] || this.keys['KeyS']) ky += 1;
+              if (kx !== 0 || ky !== 0) {
+                this.player.targetAngle = Math.atan2(ky, kx);
+              }
+            }
+          }
+
+          // Rebuild spatial grids
+          this.foodGrid.clear();
+          for (let i = 0; i < this.foods.length; i++) {
+            const f = this.foods[i];
+            this.foodGrid.insert(f.x, f.y, f);
+          }
+
+          this.segmentGrid.clear();
+          for (let i = 0; i < this.worms.length; i++) {
+            const w = this.worms[i];
+            if (!w.alive) continue;
+            const r = w.getRadius();
+            for (let s = 2; s < w.segments.length; s += 2) {
+              const seg = w.segments[s];
+              this.segmentGrid.insert(seg.x, seg.y, {
+                wormId: w.id,
+                worm: w,
+                x: seg.x,
+                y: seg.y,
+                radius: r
+              });
+            }
+          }
+
+          // Update all worms
+          for (let i = 0; i < this.worms.length; i++) {
+            this.worms[i].update(dt, this);
+          }
+
+          // Food attraction & consumption
+          for (let i = 0; i < this.worms.length; i++) {
+            const w = this.worms[i];
+            if (!w.alive) continue;
+            const headR = w.getRadius();
+            const magnetRange = headR + (w.powerups.magnet > 0 ? 220 : 48);
+            const nearbyFoods = this.foodGrid.queryRadius(w.x, w.y, magnetRange);
+
+            for (let j = 0; j < nearbyFoods.length; j++) {
+              const f = nearbyFoods[j];
+              if (f._eaten) continue;
+              const dx = w.x - f.x;
+              const dy = w.y - f.y;
+              const d = Math.hypot(dx, dy);
+
+              if (d < headR + f.radius + 4) {
+                f._eaten = true;
+                const mult = w.powerups.double > 0 ? 2 : 1;
+                w.mass += f.value * mult;
+                if (f.isGem) w.coinsEarned += 3;
+
+                if (w.isPlayer) {
+                  sound.playEat(f.isLoot || f.isGem);
+                }
+              } else if (d < magnetRange && d > 0.1) {
+                const pullSpeed = w.powerups.magnet > 0 ? 440 : 210;
+                f.x += (dx / d) * pullSpeed * dt;
+                f.y += (dy / d) * pullSpeed * dt;
+              }
+            }
+          }
+
+          // Filter eaten foods and replenish ambient food
+          this.foods = this.foods.filter(f => !f._eaten);
+          while (this.foods.length < CONFIG.INITIAL_FOOD_COUNT) {
+            this.spawnRandomFood();
+          }
+
+          // Power-up item pickups
+          for (let i = this.powerupItems.length - 1; i >= 0; i--) {
+            const pu = this.powerupItems[i];
+            let collectedBy = null;
+            for (let j = 0; j < this.worms.length; j++) {
+              const w = this.worms[j];
+              if (!w.alive) continue;
+              const hitR = w.getRadius() + pu.radius;
+              if (distSq(w.x, w.y, pu.x, pu.y) < hitR * hitR) {
+                collectedBy = w;
+                break;
+              }
+            }
+            if (collectedBy) {
+              collectedBy.powerups[pu.type.id] = pu.type.duration;
+              for (let k = 0; k < 14; k++) {
+                this.spawnParticle(pu.x, pu.y, pu.type.color, 6, 0.5);
+              }
+              if (collectedBy.isPlayer) {
+                sound.playPowerup();
+                this.spawnFloatingText(pu.x, pu.y - 24, `${pu.type.icon} ${pu.type.label}!`, pu.type.color);
+              }
+              this.powerupItems.splice(i, 1);
+            }
+          }
+          while (this.powerupItems.length < 14) {
+            this.spawnPowerupItem();
+          }
+
+          // Worm-to-Worm Head vs Body Collisions
+          for (let i = 0; i < this.worms.length; i++) {
+            const w = this.worms[i];
+            if (!w.alive) continue;
+            const headR = w.getRadius() * 0.78;
+            const candidates = this.segmentGrid.queryRadius(w.x, w.y, headR + 55);
+
+            for (let j = 0; j < candidates.length; j++) {
+              const seg = candidates[j];
+              if (seg.wormId === w.id || !seg.worm.alive) continue;
+              const hitDist = headR + seg.radius * 0.82;
+              if (distSq(w.x, w.y, seg.x, seg.y) < hitDist * hitDist) {
+                this.killWorm(w, seg.worm);
+                break;
+              }
+            }
+          }
+
+          // Cleanup dead worms & maintain AI bot population
+          this.worms = this.worms.filter(w => w.alive);
+          const botCount = this.worms.filter(w => !w.isPlayer).length;
+          if (botCount < CONFIG.BOT_COUNT) {
+            this.spawnBot(false);
+          }
+
+          // Update particles & floating texts
+          for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+            if (p.life <= 0) this.particles.splice(i, 1);
+          }
+
+          for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
+            ft.y -= 36 * dt;
+            ft.life -= dt;
+            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+          }
+
+          // Camera tracking
+          if (this.player && this.player.alive) {
+            this.camX = lerp(this.camX, this.player.x, CONFIG.CAMERA_LERP);
+            this.camY = lerp(this.camY, this.player.y, CONFIG.CAMERA_LERP);
+            const visionMult = this.player.powerups.vision > 0 ? 0.76 : 1;
+            const targetZoom = Math.max(0.45, Math.min(1.05, 1.05 - (this.player.getRadius() - 14) * 0.014)) * visionMult;
+            this.camZoom = lerp(this.camZoom, targetZoom, 0.06);
+          } else if (this.worms.length > 0) {
+            const leader = this.worms.reduce((best, w) => (w.mass > best.mass ? w : best), this.worms[0]);
+            this.camX = lerp(this.camX, leader.x, 0.04);
+            this.camY = lerp(this.camY, leader.y, 0.04);
+            this.camZoom = lerp(this.camZoom, 0.85, 0.04);
+          }
+
+          // Throttled HUD updates
+          this.uiTimer += dt;
+          if (this.uiTimer >= 0.12) {
+            this.uiTimer = 0;
+            this.updateHUD();
+          }
+        }
+
+        updateHUD() {
+          const sorted = [...this.worms].sort((a, b) => b.mass - a.mass);
+          this.leaderWormId = sorted.length > 0 ? sorted[0].id : null;
+
+          if (this.player && this.player.alive) {
+            const rank = sorted.findIndex(w => w.id === this.player.id) + 1;
+            if (rank > 0) this.player.bestRank = Math.min(this.player.bestRank, rank);
+
+            document.getElementById('hudLength').textContent = Math.floor(this.player.mass);
+            document.getElementById('hudKills').textContent = this.player.kills;
+            document.getElementById('hudCoins').textContent = this.totalCoins + this.player.coinsEarned;
+            document.getElementById('hudRank').textContent = rank > 0 ? `#${rank}` : '-';
+
+            if (this.selectedMode === 'time') {
+              const mins = Math.floor(this.modeTimeRemaining / 60);
+              const secs = Math.floor(this.modeTimeRemaining % 60);
+              document.getElementById('hudTimer').textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+
+            // Render active power-up duration bars
+            const puHud = document.getElementById('powerupHud');
+            puHud.innerHTML = '';
+            POWERUP_TYPES.forEach(pt => {
+              const rem = this.player.powerups[pt.id];
+              if (rem > 0) {
+                const pct = Math.min(100, Math.round((rem / pt.duration) * 100));
+                const pill = document.createElement('div');
+                pill.className = 'pu-pill';
+                pill.style.borderColor = pt.color;
+                pill.innerHTML = `
+                  <span>${pt.icon} ${pt.label}</span>
+                  <div class="pu-bar-bg">
+                    <div class="pu-bar-fill" style="width:${pct}%; background:${pt.color};"></div>
+                  </div>
+                `;
+                puHud.appendChild(pill);
+              }
+            });
+          }
+
+          // Update top-right leaderboard
+          const lbList = document.getElementById('leaderboardList');
+          lbList.innerHTML = '';
+          const top5 = sorted.slice(0, 5);
+          top5.forEach((w, idx) => {
+            const li = document.createElement('li');
+            li.className = 'lb-item' + (w.isPlayer ? ' me' : '');
+            li.innerHTML = `
+              <span class="lb-rank">${idx + 1}.</span>
+              <span class="lb-name">${idx === 0 ? '👑 ' : ''}${w.name}</span>
+              <span class="lb-score">${Math.floor(w.mass)}</span>
+            `;
+            lbList.appendChild(li);
+          });
+
+          this.renderRadar(sorted);
+        }
+
+        renderRadar(sortedWorms) {
+          const ctx = this.radarCtx;
+          const size = this.radarCanvas.width;
+          const half = size / 2;
+          const scale = (half - 8) / CONFIG.ARENA_RADIUS;
+
+          ctx.clearRect(0, 0, size, size);
+
+          // Radar background
+          ctx.fillStyle = 'rgba(11, 16, 30, 0.85)';
+          ctx.beginPath();
+          ctx.arc(half, half, half - 2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Crosshair lines
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(half, 6);
+          ctx.lineTo(half, size - 6);
+          ctx.moveTo(6, half);
+          ctx.lineTo(size - 6, half);
+          ctx.stroke();
+
+          // Bot dots
+          for (let i = 0; i < sortedWorms.length; i++) {
+            const w = sortedWorms[i];
+            if (!w.alive || w.isPlayer) continue;
+            const rx = half + w.x * scale;
+            const ry = half + w.y * scale;
+            const isKing = i === 0;
+            ctx.fillStyle = isKing ? '#ffd166' : 'rgba(255, 93, 143, 0.75)';
+            ctx.beginPath();
+            ctx.arc(rx, ry, isKing ? 3.8 : 2.2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Player dot
+          if (this.player && this.player.alive) {
+            const px = half + this.player.x * scale;
+            const py = half + this.player.y * scale;
+            ctx.fillStyle = '#2ee573';
+            ctx.beginPath();
+            ctx.arc(px, py, 4.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+        }
+
+        loop(now) {
+          const dt = Math.min(0.05, Math.max(0.001, (now - this.lastFrameTime) / 1000));
+          this.lastFrameTime = now;
+
+          this.update(dt);
+          this.render();
+
+          requestAnimationFrame((t) => this.loop(t));
+        }
+
+        render() {
+          const ctx = this.ctx;
+          ctx.clearRect(0, 0, this.width, this.height);
+
+          // Deep cosmic arena backdrop
+          ctx.fillStyle = '#0d1221';
+          ctx.fillRect(0, 0, this.width, this.height);
+
+          ctx.save();
+          let shakeX = 0;
+          let shakeY = 0;
+          if (this.shakeTime > 0) {
+            shakeX = (Math.random() - 0.5) * this.shakeIntensity;
+            shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+          }
+
+          ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
+          ctx.scale(this.camZoom, this.camZoom);
+          ctx.translate(-this.camX, -this.camY);
+
+          const viewHalfW = (this.width / 2) / this.camZoom + 120;
+          const viewHalfH = (this.height / 2) / this.camZoom + 120;
+
+          // Arena interior floor
+          ctx.fillStyle = '#131a2e';
+          ctx.beginPath();
+          ctx.arc(0, 0, CONFIG.ARENA_RADIUS, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Subtle hex/grid pattern clipped inside arena
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(0, 0, CONFIG.ARENA_RADIUS, 0, Math.PI * 2);
+          ctx.clip();
+
+          const gridStep = 110;
+          const startX = Math.floor((this.camX - viewHalfW) / gridStep) * gridStep;
+          const endX = Math.ceil((this.camX + viewHalfW) / gridStep) * gridStep;
+          const startY = Math.floor((this.camY - viewHalfH) / gridStep) * gridStep;
+          const endY = Math.ceil((this.camY + viewHalfH) / gridStep) * gridStep;
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let gx = startX; gx <= endX; gx += gridStep) {
+            ctx.moveTo(gx, startY);
+            ctx.lineTo(gx, endY);
+          }
+          for (let gy = startY; gy <= endY; gy += gridStep) {
+            ctx.moveTo(startX, gy);
+            ctx.lineTo(endX, gy);
+          }
+          ctx.stroke();
+          ctx.restore();
+
+          // Glowing lethal perimeter border
+          ctx.save();
+          ctx.strokeStyle = '#ff2a5f';
+          ctx.lineWidth = 14;
+          ctx.shadowColor = '#ff2a5f';
+          ctx.shadowBlur = 28;
+          ctx.beginPath();
+          ctx.arc(0, 0, CONFIG.ARENA_RADIUS, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+
+          // Render foods & powerups
+          this.renderFoods(ctx, viewHalfW, viewHalfH);
+          this.renderPowerupItems(ctx, viewHalfW, viewHalfH);
+
+          // Render worms (smaller worms below larger ones, player on top)
+          const sortedForDraw = [...this.worms].sort((a, b) => {
+            if (a.isPlayer) return 1;
+            if (b.isPlayer) return -1;
+            return a.mass - b.mass;
+          });
+          for (let i = 0; i < sortedForDraw.length; i++) {
+            this.renderWorm(ctx, sortedForDraw[i], viewHalfW, viewHalfH);
+          }
+
+          // Render particles
+          for (let i = 0; i < this.particles.length; i++) {
+            const p = this.particles[i];
+            const alpha = Math.max(0, p.life / p.maxLife);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+
+          // Render floating texts
+          for (let i = 0; i < this.floatingTexts.length; i++) {
+            const ft = this.floatingTexts[i];
+            const alpha = Math.min(1, ft.life / (ft.maxLife * 0.4));
+            ctx.globalAlpha = alpha;
+            ctx.font = '700 18px "Fredoka", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(0,0,0,0.65)';
+            ctx.fillText(ft.text, ft.x, ft.y + 2);
+            ctx.fillStyle = ft.color;
+            ctx.fillText(ft.text, ft.x, ft.y);
+          }
+          ctx.globalAlpha = 1;
+
+          ctx.restore();
+
+          // Screen-space King tracker arrow
+          this.renderKingPointer();
+        }
+
+        renderPowerupItems(ctx, viewHalfW, viewHalfH) {
+          for (let i = 0; i < this.powerupItems.length; i++) {
+            const pu = this.powerupItems[i];
+            if (Math.abs(pu.x - this.camX) > viewHalfW || Math.abs(pu.y - this.camY) > viewHalfH) continue;
+            const bob = Math.sin(this.timeElapsed * 4 + pu.phase) * 4;
+
+            ctx.save();
+            ctx.translate(pu.x, pu.y + bob);
+            ctx.fillStyle = 'rgba(20, 27, 46, 0.9)';
+            ctx.strokeStyle = pu.type.color;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = pu.type.color;
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            ctx.arc(0, 0, pu.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.font = '18px "Fredoka", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pu.type.icon, 0, 1);
+            ctx.restore();
+          }
+        }
+
+          const angle = Math.atan2(screenY - this.height / 2, screenX - this.width / 2);
+          const rx = this.width / 2 - pad;
+          const ry = this.height / 2 - pad;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          const t = Math.min(
+            Math.abs(rx / (cos || 0.0001)),
+            Math.abs(ry / (sin || 0.0001))
+          );
+
+          const ix = this.width / 2 + cos * t;
+          const iy = this.height / 2 + sin * t;
+
+          const ctx = this.ctx;
+          ctx.save();
+          ctx.translate(ix, iy);
+          ctx.fillStyle = 'rgba(20, 27, 46, 0.9)';
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 18, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.font = '16px "Fredoka", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('👑', 0, 1);
+          ctx.restore();
+        }
+
+        renderFoods(ctx, viewHalfW, viewHalfH) {
+          for (let i = 0; i < this.foods.length; i++) {
+            const f = this.foods[i];
+            if (Math.abs(f.x - this.camX) > viewHalfW || Math.abs(f.y - this.camY) > viewHalfH) continue;
+            const pulse = 1 + Math.sin(this.timeElapsed * 5 + f.phase) * 0.12;
+            const r = f.radius * pulse;
+
+            // Soft outer aura for loot and gems
+            if (f.isLoot || f.isGem) {
+              ctx.fillStyle = f.color;
+              ctx.globalAlpha = 0.25;
+              ctx.beginPath();
+              ctx.arc(f.x, f.y, r * 1.85, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalAlpha = 1;
+            }
+
+            if (f.treatType && f.treatType !== 'orb') {
+              const emojiMap = {
+                donut: '🍩',
+                burger: '🍔',
+                watermelon: '🍉',
+                icecream: '🍦',
+                star: '⭐',
+                gem: '💎'
+              };
+              ctx.font = `${Math.round(r * 2.1)}px "Fredoka", sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(emojiMap[f.treatType] || '🍬', f.x, f.y);
+            } else {
+              ctx.fillStyle = f.color;
+              ctx.beginPath();
+              ctx.arc(f.x, f.y, r, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Glossy highlight dot
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+              ctx.beginPath();
+              ctx.arc(f.x - r * 0.3, f.y - r * 0.3, r * 0.32, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        renderWorm(ctx, worm, viewHalfW, viewHalfH) {
+          if (!worm.alive || worm.segments.length === 0) return;
+          const segs = worm.segments;
+          const baseRadius = worm.getRadius();
+
+          ctx.save();
+          if (worm.boosting) {
+            ctx.shadowColor = worm.skin.glow;
+            ctx.shadowBlur = 18;
+          }
+
+          // Draw segments from tail to head so head overlaps cleanly
+          for (let i = segs.length - 1; i >= 0; i--) {
+            const s = segs[i];
+            if (Math.abs(s.x - this.camX) > viewHalfW + baseRadius || Math.abs(s.y - this.camY) > viewHalfH + baseRadius) {
+              continue;
+            }
+            const t = i / segs.length;
+            const taper = i > segs.length - 6 ? 1 - ((i - (segs.length - 6)) / 7) * 0.42 : 1;
+            const r = baseRadius * taper;
+            const colorIdx = Math.floor(i / 2) % worm.skin.colors.length;
+
+            ctx.fillStyle = worm.skin.colors[colorIdx];
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Subtle top sheen
+            if (i % 2 === 0) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+              ctx.beginPath();
+              ctx.arc(s.x - r * 0.22, s.y - r * 0.25, r * 0.48, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          ctx.shadowBlur = 0;
+
+          // Draw expressive cartoon eyes & smile on head
+          const head = segs[0];
+          const eyeForward = baseRadius * 0.38;
+          const eyeSide = baseRadius * 0.44;
+          const eyeRadius = baseRadius * 0.32;
+          const cos = Math.cos(worm.angle);
+          const sin = Math.sin(worm.angle);
+          const perpX = -sin;
+          const perpY = cos;
+
+          // Cute smiling mouth
+          ctx.strokeStyle = 'rgba(15, 20, 35, 0.65)';
+          ctx.lineWidth = Math.max(2, baseRadius * 0.1);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(
+            head.x + cos * (baseRadius * 0.32),
+            head.y + sin * (baseRadius * 0.32),
+            baseRadius * 0.34,
+            worm.angle - 0.55,
+            worm.angle + 0.55
+          );
+          ctx.stroke();
+
+          [-1, 1].forEach(side => {
+            const ex = head.x + cos * eyeForward + perpX * eyeSide * side;
+            const ey = head.y + sin * eyeForward + perpY * eyeSide * side;
+
+            if (worm.isBlinking) {
+              ctx.strokeStyle = '#111625';
+              ctx.lineWidth = Math.max(2, baseRadius * 0.11);
+              ctx.beginPath();
+              ctx.moveTo(ex - perpX * eyeRadius * 0.7, ey - perpY * eyeRadius * 0.7);
+              ctx.lineTo(ex + perpX * eyeRadius * 0.7, ey + perpY * eyeRadius * 0.7);
+              ctx.stroke();
+            } else {
+              // Sclera
+              ctx.fillStyle = worm.skin.eyeColor;
+              ctx.beginPath();
+              ctx.arc(ex, ey, eyeRadius, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Pupil looking forward
+              ctx.fillStyle = '#111625';
+              ctx.beginPath();
+              ctx.arc(
+                ex + cos * eyeRadius * 0.32,
+                ey + sin * eyeRadius * 0.32,
+                eyeRadius * 0.54,
+                0,
+                Math.PI * 2
+              );
+              ctx.fill();
+
+              // Catchlight
+              ctx.fillStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.arc(
+                ex + cos * eyeRadius * 0.18 - perpX * eyeRadius * 0.18,
+                ey + sin * eyeRadius * 0.18 - perpY * eyeRadius * 0.18,
+                eyeRadius * 0.22,
+                0,
+                Math.PI * 2
+              );
+              ctx.fill();
+            }
+          });
+
+          // Hat / Accessory above head
+          if (worm.hat && worm.hat !== 'none') {
+            const hatObj = HATS.find(h => h.id === worm.hat);
+            if (hatObj) {
+              ctx.font = `${Math.max(16, Math.round(baseRadius * 1.15))}px "Fredoka", sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(hatObj.icon, head.x, head.y - baseRadius * 0.95);
+            }
+          }
+
+          // Nameplate & #1 King Crown
+          const isLeader = worm.id === this.leaderWormId;
+          const labelY = head.y - baseRadius - (worm.hat && worm.hat !== 'none' ? 24 : 12);
+          ctx.font = '700 13px "Fredoka", sans-serif';
+          ctx.textAlign = 'center';
+          const displayName = (isLeader ? '👑 ' : '') + worm.name;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+          ctx.fillText(displayName, head.x, labelY + 1.5);
+          ctx.fillStyle = worm.isPlayer ? '#7ef9a9' : (isLeader ? '#ffd166' : '#ffffff');
+          ctx.fillText(displayName, head.x, labelY);
+
+          ctx.restore();
+        }
+      }
+
+      // Bootstrap on load
+      window.addEventListener('DOMContentLoaded', () => {
+        window.wormGame = new WormGame();
+      });
+    })();
+  </script>
+</body>
+</html>
